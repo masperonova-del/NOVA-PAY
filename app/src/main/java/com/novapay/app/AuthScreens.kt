@@ -6,6 +6,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +37,13 @@ fun AuthScreen(
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+
+    BackHandler(enabled = mode != 0) {
+        message = ""
+        mode = 0
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -141,7 +151,9 @@ fun AuthScreen(
                         onValueChange = { password = it },
                         label = "Mot de passe",
                         keyboardType = KeyboardType.Password,
-                        isPassword = true
+                        isPassword = true,
+                        passwordVisible = passwordVisible,
+                        onTogglePasswordVisibility = { passwordVisible = !passwordVisible }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -286,7 +298,9 @@ private fun AuthField(
     onValueChange: (String) -> Unit,
     label: String,
     keyboardType: KeyboardType = KeyboardType.Text,
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    passwordVisible: Boolean = false,
+    onTogglePasswordVisibility: (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -298,11 +312,22 @@ private fun AuthField(
         singleLine = true,
         shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        visualTransformation = if (isPassword) {
+        visualTransformation = if (isPassword && !passwordVisible) {
             PasswordVisualTransformation()
         } else {
             androidx.compose.ui.text.input.VisualTransformation.None
         },
+        trailingIcon = if (isPassword) {
+            {
+                IconButton(onClick = { onTogglePasswordVisibility?.invoke() }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        contentDescription = if (passwordVisible) "Masquer le mot de passe" else "Afficher le mot de passe",
+                        tint = AuthMuted
+                    )
+                }
+            }
+        } else null,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = AuthText,
             unfocusedTextColor = AuthText,
