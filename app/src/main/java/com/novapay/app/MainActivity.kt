@@ -81,7 +81,7 @@ class MainActivity:ComponentActivity(){
       0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2},balance,{transactionDialog=true})
       1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
       2->ActivityPage(history)
-      else->Profile(user=user,open={dialog=true},onLogout={
+      else->Profile(user=user,open={dialog=true},onProfileUpdated={updated->authStorage.updateProfile(updated.name,updated.email,updated.phone)?.let{currentUser=it}},onLogout={
        authStorage.logout()
        currentUser=null
        page=0
@@ -191,7 +191,13 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable fun Profile(user:AuthUser,open:()->Unit,onLogout:()->Unit){
+@Composable fun Profile(user:AuthUser,open:()->Unit,onProfileUpdated:(AuthUser)->Unit,onLogout:()->Unit){
+ var editing by remember { mutableStateOf(false) }
+ var verifying by remember { mutableStateOf(false) }
+ var name by remember(user.name) { mutableStateOf(user.name) }
+ var email by remember(user.email) { mutableStateOf(user.email) }
+ var phone by remember(user.phone) { mutableStateOf(user.phone) }
+ var error by remember { mutableStateOf("") }
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp),verticalArrangement=Arrangement.spacedBy(13.dp)){
   Heading("Profil","Votre espace NOVA")
   Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
@@ -205,12 +211,21 @@ class MainActivity:ComponentActivity(){
    }
    Divider(color=Blue)
    InfoLine("Téléphone",user.phone)
-   InfoLine("État du téléphone",if(user.phoneVerified)"Vérifié" else "Non vérifié")
+   Row(verticalAlignment=Alignment.CenterVertically){
+    Column(Modifier.weight(1f)){
+     Text("Vérification du téléphone",color=Muted,fontSize=11.sp)
+     Text(if(user.phoneVerified)"Vérifié" else "Non vérifié",color=if(user.phoneVerified)Green else Gold,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+    }
+    TextButton(onClick={verifying=true},enabled=!user.phoneVerified){Text(if(user.phoneVerified)"Vérifié" else "Vérifier",color=Gold)}
+   }
    InfoLine("Type de compte","Compte local de démonstration")
   }
-  listOf("Informations personnelles","Sécurité et confidentialité","Notifications","Centre d'aide","À propos de NOVA PAY").forEach{label->
+  Button(onClick={editing=true},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Ink)){
+   Icon(Icons.Rounded.Edit,null);Spacer(Modifier.width(8.dp));Text("Modifier mes informations")
+  }
+  listOf("Sécurité et confidentialité","Notifications","Centre d'aide","À propos de NOVA PAY").forEach{label->
    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable{open()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
-    Icon(Icons.Rounded.AccountCircle,null,tint=Gold);Spacer(Modifier.width(12.dp));Text(label,color=Silver,modifier=Modifier.weight(1f),fontSize=13.sp);Icon(Icons.Rounded.ChevronRight,null,tint=Muted)
+    Icon(Icons.Rounded.Settings,null,tint=Gold);Spacer(Modifier.width(12.dp));Text(label,color=Silver,modifier=Modifier.weight(1f),fontSize=13.sp);Icon(Icons.Rounded.ChevronRight,null,tint=Muted)
    }
   }
   Button(onClick=onLogout,modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF48252B),contentColor=Color.White)){
@@ -218,6 +233,18 @@ class MainActivity:ComponentActivity(){
   }
   Notice()
  }
+ if(editing) AlertDialog(onDismissRequest={editing=false},containerColor=Panel,title={Text("Modifier le profil",color=Gold)},text={
+  Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+   OutlinedTextField(value=name,onValueChange={name=it;error=""},label={Text("Nom complet")},singleLine=true)
+   OutlinedTextField(value=email,onValueChange={email=it;error=""},label={Text("Adresse e-mail")},singleLine=true)
+   OutlinedTextField(value=phone,onValueChange={phone=it;error=""},label={Text("Téléphone")},singleLine=true)
+   if(error.isNotBlank()) Text(error,color=Color(0xFFFF8A80),fontSize=12.sp)
+  }
+ },confirmButton={TextButton(onClick={
+  if(name.isBlank()||!email.contains("@")||phone.isBlank()) error="Vérifie les trois champs."
+  else {onProfileUpdated(user.copy(name=name.trim(),email=email.trim(),phone=phone.trim()));editing=false}
+ }){Text("Enregistrer",color=Gold)}},dismissButton={TextButton(onClick={editing=false}){Text("Annuler",color=Muted)}})
+ if(verifying) AlertDialog(onDismissRequest={verifying=false},containerColor=Panel,title={Text("Vérification du téléphone",color=Gold)},text={Text("Le service d'envoi de SMS n'est pas encore connecté. Ton numéro reste donc non vérifié. Nous ne pouvons pas confirmer un numéro sans code envoyé par un prestataire SMS.",color=Silver)},confirmButton={TextButton(onClick={verifying=false}){Text("Compris",color=Gold)}})
 }
 @Composable fun Heading(title:String,sub:String){Column(Modifier.padding(bottom=4.dp)){Text(title,fontSize=27.sp,fontWeight=FontWeight.Bold,color=Silver);Text(sub,fontSize=12.sp,color=Muted)}}
 @Composable fun Action(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,click:()->Unit,mod:Modifier){Column(mod.clip(RoundedCornerShape(15.dp)).background(Panel).clickable{click()}.padding(vertical=15.dp,horizontal=5.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(icon,null,tint=Gold);Spacer(Modifier.height(7.dp));Text(label,fontSize=10.sp,color=Silver,maxLines=1,overflow=TextOverflow.Ellipsis)}}
