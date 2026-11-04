@@ -265,6 +265,20 @@ class AuthStorage(context: Context) {
         }
     }
 
+    fun updateProfile(name: String, email: String, phone: String): AuthUser? {
+        if (name.isBlank() || !email.contains("@") || phone.isBlank()) return null
+        return try {
+            val editor = prefs.edit()
+                .putString("name", encrypt(name.trim()))
+                .putString("email", encrypt(email.trim().lowercase()))
+                .putString("phone", encrypt(phone.trim()))
+            if (!editor.commit()) return null
+            getCurrentUser()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun logout() {
         try {
             prefs.edit()
