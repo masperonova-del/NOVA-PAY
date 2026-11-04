@@ -274,3 +274,4 @@ class AuthStorage(context: Context) {
             prefs.edit().remove("session").commit()
         }
     }
+}
