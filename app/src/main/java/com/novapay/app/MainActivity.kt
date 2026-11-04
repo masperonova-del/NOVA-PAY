@@ -62,7 +62,7 @@ class MainActivity:ComponentActivity(){
  }}){pad->
  Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=20.dp)){
  when(page){
- 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1})
+ 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2})
  1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
  2->ActivityPage()
  else->Profile({dialog=true})
@@ -85,7 +85,7 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable fun Home(hidden:Boolean,toggle:()->Unit,frozen:Boolean,freeze:()->Unit,toCards:()->Unit){
+@Composable fun Home(hidden:Boolean,toggle:()->Unit,frozen:Boolean,freeze:()->Unit,toCards:()->Unit,toActivity:()->Unit){
  LazyColumn(contentPadding=PaddingValues(bottom=22.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
  item{Brand()}
  item{Column{
@@ -97,7 +97,7 @@ class MainActivity:ComponentActivity(){
  item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
  Action(Icons.Rounded.CreditCard,"Mes cartes",toCards,Modifier.weight(1f))
  Action(if(frozen)Icons.Rounded.LockOpen else Icons.Rounded.Lock,if(frozen)"Activer" else "Geler",freeze,Modifier.weight(1f))
- Action(Icons.Rounded.ReceiptLong,"Activité",{},Modifier.weight(1f))
+ Action(Icons.Rounded.ReceiptLong,"Activité",toActivity,Modifier.weight(1f))
  }}
  item{Text("Activité récente",fontSize=17.sp,fontWeight=FontWeight.Bold,color=Silver)}
  item{Tx("Abonnement numérique","Aujourd'hui • Démonstration","− 4 900 FCFA",Icons.Rounded.Subscriptions,false)}
