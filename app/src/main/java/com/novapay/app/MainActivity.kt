@@ -40,47 +40,60 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun NovaApp(){
- val context= LocalContext.current
- val prefs= remember { context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE) }
+ val context=LocalContext.current
+ val prefs=remember{context.getSharedPreferences(PREFS_NAME,android.content.Context.MODE_PRIVATE)}
+ val authStorage=remember{AuthStorage(context)}
+ var currentUser by remember{mutableStateOf(authStorage.getCurrentUser())}
  var page by rememberSaveable{mutableIntStateOf(0)}
  var hidden by rememberSaveable{mutableStateOf(false)}
- var frozen by remember { mutableStateOf(prefs.getBoolean(KEY_FROZEN,false)) }
- var spendingLimit by remember { mutableIntStateOf(prefs.getInt(KEY_LIMIT,100000)) }
- var balance by remember { mutableLongStateOf(prefs.getLong(KEY_BALANCE,125000L)) }
- var history by remember { mutableStateOf(prefs.getString(KEY_HISTORY, "") ?: "") }
- var transactionDialog by rememberSaveable { mutableStateOf(false) }
- var txAmount by rememberSaveable { mutableStateOf("") }
- var txLabel by rememberSaveable { mutableStateOf("") }
- var txError by rememberSaveable { mutableStateOf("") }
+ var frozen by remember{mutableStateOf(prefs.getBoolean(KEY_FROZEN,false))}
+ var spendingLimit by remember{mutableIntStateOf(prefs.getInt(KEY_LIMIT,100000))}
+ var balance by remember{mutableLongStateOf(prefs.getLong(KEY_BALANCE,125000L))}
+ var history by remember{mutableStateOf(prefs.getString(KEY_HISTORY,"") ?: "")}
+ var transactionDialog by rememberSaveable{mutableStateOf(false)}
+ var txAmount by rememberSaveable{mutableStateOf("")}
+ var txLabel by rememberSaveable{mutableStateOf("")}
+ var txError by rememberSaveable{mutableStateOf("")}
  var dialog by remember{mutableStateOf(false)}
- val toggleFrozen={
-  frozen=!frozen
-  prefs.edit().putBoolean(KEY_FROZEN,frozen).apply()
- }
- val updateLimit:(Int)->Unit={value->
-  spendingLimit=value
-  prefs.edit().putInt(KEY_LIMIT,value).apply()
- }
- MaterialTheme(colorScheme=darkColorScheme(primary=Gold,secondary=Violet,background=Ink,surface=Panel)){
- Scaffold(containerColor=Ink,bottomBar={
- NavigationBar(containerColor=Color(0xFF0D1320)){
- val labels=listOf("Accueil","Cartes","Activité","Profil")
- val icons=listOf(Icons.Rounded.Home,Icons.Rounded.CreditCard,Icons.Rounded.ReceiptLong,Icons.Rounded.Person)
- labels.forEachIndexed{i,s->NavigationBarItem(selected=page==i,onClick={page=i},icon={Icon(icons[i],null)},label={Text(s,fontSize=10.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=Gold,selectedTextColor=Gold,indicatorColor=Gold.copy(.12f),unselectedIconColor=Muted,unselectedTextColor=Muted))}
- }}){pad->
- Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=20.dp)){
- when(page){
- 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2},balance,{transactionDialog=true})
- 1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
- 2->ActivityPage(history)
- else->Profile({dialog=true})
- }
- }
- if(transactionDialog) AlertDialog(onDismissRequest={transactionDialog=false},containerColor=Panel,title={Text("Transaction simulée",color=Gold)},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){Text("Démonstration uniquement — aucun paiement réel.",color=Muted,fontSize=12.sp);OutlinedTextField(value=txLabel,onValueChange={txLabel=it;txError=""},label={Text("Libellé")},singleLine=true);OutlinedTextField(value=txAmount,onValueChange={txAmount=it.filter{c->c.isDigit()} ;txError=""},label={Text("Montant en FCFA")},singleLine=true);if(txError.isNotBlank())Text(txError,color=Color(0xFFFF8A80),fontSize=12.sp)}},confirmButton={TextButton(onClick={val amount=txAmount.toLongOrNull();when{txLabel.isBlank()->txError="Ajoute un libellé.";amount==null||amount<=0->txError="Montant invalide.";amount>balance->txError="Solde fictif insuffisant.";else->{balance-=amount;prefs.edit().putLong(KEY_BALANCE,balance).apply();val row="${System.currentTimeMillis()}|${txLabel.replace("|"," ")}|-$amount";history=if(history.isBlank())row else "$row\n$history";prefs.edit().putString(KEY_HISTORY,history).apply();txLabel="";txAmount="";txError="";transactionDialog=false}}}){Text("Confirmer la simulation",color=Gold)}},dismissButton={TextButton(onClick={transactionDialog=false}){Text("Annuler",color=Muted)}})
- if(dialog) AlertDialog(onDismissRequest={dialog=false},containerColor=Panel,title={Text("NOVA PAY",color=Gold)},text={Text("Cette rubrique est une maquette. Elle sera complétée dans une prochaine version. Aucune opération bancaire réelle n'est effectuée.",color=Silver)},confirmButton={TextButton(onClick={dialog=false}){Text("Fermer",color=Gold)}})
- }}
-}
 
+ MaterialTheme(colorScheme=darkColorScheme(primary=Gold,secondary=Violet,background=Ink,surface=Panel)){
+  if(currentUser==null){
+   AuthScreen(authStorage=authStorage,onAuthenticated={user->currentUser=user;page=0})
+  }else{
+   val user=currentUser!!
+   val toggleFrozen={
+    frozen=!frozen
+    prefs.edit().putBoolean(KEY_FROZEN,frozen).apply()
+   }
+   val updateLimit:(Int)->Unit={value->
+    spendingLimit=value
+    prefs.edit().putInt(KEY_LIMIT,value).apply()
+   }
+   Scaffold(containerColor=Ink,bottomBar={
+    NavigationBar(containerColor=Color(0xFF0D1320)){
+     val labels=listOf("Accueil","Cartes","Activité","Profil")
+     val icons=listOf(Icons.Rounded.Home,Icons.Rounded.CreditCard,Icons.Rounded.ReceiptLong,Icons.Rounded.Person)
+     labels.forEachIndexed{i,s->NavigationBarItem(selected=page==i,onClick={page=i},icon={Icon(icons[i],null)},label={Text(s,fontSize=10.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=Gold,selectedTextColor=Gold,indicatorColor=Gold.copy(.12f),unselectedIconColor=Muted,unselectedTextColor=Muted))}
+    }
+   }){pad->
+    Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=20.dp)){
+     when(page){
+      0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2},balance,{transactionDialog=true})
+      1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
+      2->ActivityPage(history)
+      else->Profile(user=user,open={dialog=true},onLogout={
+       authStorage.logout()
+       currentUser=null
+       page=0
+      })
+     }
+    }
+    if(transactionDialog) AlertDialog(onDismissRequest={transactionDialog=false},containerColor=Panel,title={Text("Transaction simulée",color=Gold)},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){Text("Démonstration uniquement — aucun paiement réel.",color=Muted,fontSize=12.sp);OutlinedTextField(value=txLabel,onValueChange={txLabel=it;txError=""},label={Text("Libellé")},singleLine=true);OutlinedTextField(value=txAmount,onValueChange={txAmount=it.filter{c->c.isDigit()};txError=""},label={Text("Montant en FCFA")},singleLine=true);if(txError.isNotBlank())Text(txError,color=Color(0xFFFF8A80),fontSize=12.sp)}},confirmButton={TextButton(onClick={val amount=txAmount.toLongOrNull();when{txLabel.isBlank()->txError="Ajoute un libellé.";amount==null||amount<=0->txError="Montant invalide.";amount>balance->txError="Solde fictif insuffisant.";else->{balance-=amount;prefs.edit().putLong(KEY_BALANCE,balance).apply();val row="\${System.currentTimeMillis()}|\${txLabel.replace("|"," ")}|-$amount";history=if(history.isBlank())row else "$row\n$history";prefs.edit().putString(KEY_HISTORY,history).apply();txLabel="";txAmount="";txError="";transactionDialog=false}}}){Text("Confirmer la simulation",color=Gold)}},dismissButton={TextButton(onClick={transactionDialog=false}){Text("Annuler",color=Muted)}})
+    if(dialog) AlertDialog(onDismissRequest={dialog=false},containerColor=Panel,title={Text("NOVA PAY",color=Gold)},text={Text("Cette rubrique est une maquette. Aucune opération bancaire réelle n'est effectuée.",color=Silver)},confirmButton={TextButton(onClick={dialog=false}){Text("Fermer",color=Gold)}})
+   }
+  }
+ }
+}
 @Composable fun Brand(){
  Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.padding(top=22.dp,bottom=22.dp)){
  Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Blue,Panel))).border(1.dp,Gold.copy(.7f),RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center){
@@ -178,17 +191,34 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable fun Profile(open:()->Unit){
+@Composable fun Profile(user:AuthUser,open:()->Unit,onLogout:()->Unit){
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp),verticalArrangement=Arrangement.spacedBy(13.dp)){
- Heading("Profil","Votre espace NOVA")
- listOf("Informations personnelles","Sécurité et confidentialité","Notifications","Centre d'aide","À propos de NOVA PAY").forEach{label->
- Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable{open()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
- Icon(Icons.Rounded.AccountCircle,null,tint=Gold);Spacer(Modifier.width(12.dp));Text(label,color=Silver,modifier=Modifier.weight(1f),fontSize=13.sp);Icon(Icons.Rounded.ChevronRight,null,tint=Muted)
- }}
- Notice()
+  Heading("Profil","Votre espace NOVA")
+  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Panel).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+   Row(verticalAlignment=Alignment.CenterVertically){
+    Icon(Icons.Rounded.AccountCircle,null,tint=Gold,modifier=Modifier.size(42.dp))
+    Spacer(Modifier.width(12.dp))
+    Column(Modifier.weight(1f)){
+     Text(user.name,color=Silver,fontWeight=FontWeight.Bold,fontSize=17.sp)
+     Text(user.email,color=Muted,fontSize=11.sp)
+    }
+   }
+   Divider(color=Blue)
+   InfoLine("Téléphone",user.phone)
+   InfoLine("État du téléphone",if(user.phoneVerified)"Vérifié" else "Non vérifié")
+   InfoLine("Type de compte","Compte local de démonstration")
+  }
+  listOf("Informations personnelles","Sécurité et confidentialité","Notifications","Centre d'aide","À propos de NOVA PAY").forEach{label->
+   Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable{open()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
+    Icon(Icons.Rounded.AccountCircle,null,tint=Gold);Spacer(Modifier.width(12.dp));Text(label,color=Silver,modifier=Modifier.weight(1f),fontSize=13.sp);Icon(Icons.Rounded.ChevronRight,null,tint=Muted)
+   }
+  }
+  Button(onClick=onLogout,modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF48252B),contentColor=Color.White)){
+   Icon(Icons.Rounded.Logout,null);Spacer(Modifier.width(8.dp));Text("Se déconnecter")
+  }
+  Notice()
  }
 }
-
 @Composable fun Heading(title:String,sub:String){Column(Modifier.padding(bottom=4.dp)){Text(title,fontSize=27.sp,fontWeight=FontWeight.Bold,color=Silver);Text(sub,fontSize=12.sp,color=Muted)}}
 @Composable fun Action(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,click:()->Unit,mod:Modifier){Column(mod.clip(RoundedCornerShape(15.dp)).background(Panel).clickable{click()}.padding(vertical=15.dp,horizontal=5.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(icon,null,tint=Gold);Spacer(Modifier.height(7.dp));Text(label,fontSize=10.sp,color=Silver,maxLines=1,overflow=TextOverflow.Ellipsis)}}
 @Composable fun Tx(title:String,sub:String,amount:String,icon:androidx.compose.ui.graphics.vector.ImageVector,incoming:Boolean){
