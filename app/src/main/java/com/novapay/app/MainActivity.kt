@@ -29,6 +29,8 @@ private val Muted=Color(0xFF929DB0); private val Green=Color(0xFF55C99A)
 private const val PREFS_NAME="nova_pay_demo"
 private const val KEY_FROZEN="demo_card_frozen"
 private const val KEY_LIMIT="demo_spending_limit"
+private const val KEY_BALANCE="demo_balance"
+private const val KEY_HISTORY="demo_history"
 
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState)
@@ -44,6 +46,12 @@ class MainActivity:ComponentActivity(){
  var hidden by rememberSaveable{mutableStateOf(false)}
  var frozen by remember { mutableStateOf(prefs.getBoolean(KEY_FROZEN,false)) }
  var spendingLimit by remember { mutableIntStateOf(prefs.getInt(KEY_LIMIT,100000)) }
+ var balance by remember { mutableLongStateOf(prefs.getLong(KEY_BALANCE,125000L)) }
+ var history by remember { mutableStateOf(prefs.getString(KEY_HISTORY, "") ?: "") }
+ var transactionDialog by rememberSaveable { mutableStateOf(false) }
+ var txAmount by rememberSaveable { mutableStateOf("") }
+ var txLabel by rememberSaveable { mutableStateOf("") }
+ var txError by rememberSaveable { mutableStateOf("") }
  var dialog by remember{mutableStateOf(false)}
  val toggleFrozen={
   frozen=!frozen
@@ -62,9 +70,9 @@ class MainActivity:ComponentActivity(){
  }}){pad->
  Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=20.dp)){
  when(page){
- 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2})
+ 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1},{page=2},balance,{transactionDialog=true})
  1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
- 2->ActivityPage()
+ 2->ActivityPage(history)
  else->Profile({dialog=true})
  }
  }
@@ -85,15 +93,16 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable fun Home(hidden:Boolean,toggle:()->Unit,frozen:Boolean,freeze:()->Unit,toCards:()->Unit,toActivity:()->Unit){
+@Composable fun Home(hidden:Boolean,toggle:()->Unit,frozen:Boolean,freeze:()->Unit,toCards:()->Unit,toActivity:()->Unit,balance:Long,newTransaction:()->Unit){
  LazyColumn(contentPadding=PaddingValues(bottom=22.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
  item{Brand()}
  item{Column{
  Text("SOLDE DISPONIBLE",fontSize=10.sp,letterSpacing=2.sp,color=Muted)
- Row(verticalAlignment=Alignment.Bottom){Text(if(hidden)"••••••" else "125 000",fontSize=35.sp,fontWeight=FontWeight.Bold,color=Silver);Spacer(Modifier.width(8.dp));Text("FCFA",fontSize=13.sp,color=Gold,modifier=Modifier.padding(bottom=6.dp));Spacer(Modifier.weight(1f));IconButton(onClick=toggle){Icon(if(hidden)Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,null,tint=Gold)}}
+ Row(verticalAlignment=Alignment.Bottom){Text(if(hidden)"••••••" else "%,d".format(java.util.Locale.FRANCE,balance),fontSize=35.sp,fontWeight=FontWeight.Bold,color=Silver);Spacer(Modifier.width(8.dp));Text("FCFA",fontSize=13.sp,color=Gold,modifier=Modifier.padding(bottom=6.dp));Spacer(Modifier.weight(1f));IconButton(onClick=toggle){Icon(if(hidden)Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,null,tint=Gold)}}
  Text("Solde fictif de démonstration",fontSize=11.sp,color=Muted)
  }}
  item{CardVisual(frozen)}
+ item{Button(onClick=newTransaction,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Ink)){Icon(Icons.Rounded.Add,null);Spacer(Modifier.width(8.dp));Text("Nouvelle transaction simulée",fontWeight=FontWeight.Bold)}}
  item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
  Action(Icons.Rounded.CreditCard,"Mes cartes",toCards,Modifier.weight(1f))
  Action(if(frozen)Icons.Rounded.LockOpen else Icons.Rounded.Lock,if(frozen)"Activer" else "Geler",freeze,Modifier.weight(1f))
@@ -155,14 +164,16 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable fun ActivityPage(){
+@Composable fun ActivityPage(history:String){
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp)){
- Heading("Activité","Vos mouvements fictifs en un coup d'œil")
+ Heading("Activité","Transactions fictives enregistrées sur cet appareil")
  Spacer(Modifier.height(16.dp))
- Tx("Abonnement numérique","03 nov. 2026 • Démonstration","− 4 900 FCFA",Icons.Rounded.Subscriptions,false)
- Tx("Achat en ligne","02 nov. 2026 • Démonstration","− 12 500 FCFA",Icons.Rounded.ShoppingBag,false)
- Tx("Recharge fictive","28 oct. 2026 • Démonstration","+ 25 000 FCFA",Icons.Rounded.SouthWest,true)
- Notice()
+ if(history.isBlank()) Text("Aucune transaction simulée pour le moment.",color=Muted)
+ else history.lines().forEach { line ->
+  val parts=line.split("|",limit=3)
+  if(parts.size==3){val date=java.text.SimpleDateFormat("dd MMM yyyy • HH:mm",java.util.Locale.FRANCE).format(java.util.Date(parts[0].toLongOrNull()?:0L));Tx(parts[1],"$date • Démonstration",parts[2]+" FCFA",Icons.Rounded.ReceiptLong,false)}
+ }
+ Spacer(Modifier.height(14.dp));Notice()
  }
 }
 
