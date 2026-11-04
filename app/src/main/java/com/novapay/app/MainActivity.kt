@@ -17,14 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.*
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.*
 
 private val Ink=Color(0xFF080B12); private val Panel=Color(0xFF111827)
 private val Blue=Color(0xFF172238); private val Gold=Color(0xFFD7B56D)
 private val Violet=Color(0xFF8274E8); private val Silver=Color(0xFFDCE3EF)
 private val Muted=Color(0xFF929DB0); private val Green=Color(0xFF55C99A)
+private const val PREFS_NAME="nova_pay_demo"
+private const val KEY_FROZEN="demo_card_frozen"
+private const val KEY_LIMIT="demo_spending_limit"
 
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState)
@@ -34,10 +38,21 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun NovaApp(){
+ val context= LocalContext.current
+ val prefs= remember { context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE) }
  var page by rememberSaveable{mutableIntStateOf(0)}
  var hidden by rememberSaveable{mutableStateOf(false)}
- var frozen by rememberSaveable{mutableStateOf(false)}
+ var frozen by remember { mutableStateOf(prefs.getBoolean(KEY_FROZEN,false)) }
+ var spendingLimit by remember { mutableIntStateOf(prefs.getInt(KEY_LIMIT,100000)) }
  var dialog by remember{mutableStateOf(false)}
+ val toggleFrozen={
+  frozen=!frozen
+  prefs.edit().putBoolean(KEY_FROZEN,frozen).apply()
+ }
+ val updateLimit:(Int)->Unit={value->
+  spendingLimit=value
+  prefs.edit().putInt(KEY_LIMIT,value).apply()
+ }
  MaterialTheme(colorScheme=darkColorScheme(primary=Gold,secondary=Violet,background=Ink,surface=Panel)){
  Scaffold(containerColor=Ink,bottomBar={
  NavigationBar(containerColor=Color(0xFF0D1320)){
@@ -47,13 +62,13 @@ class MainActivity:ComponentActivity(){
  }}){pad->
  Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=20.dp)){
  when(page){
- 0->Home(hidden,{hidden=!hidden},frozen,{frozen=!frozen},{page=1})
- 1->Cards(frozen,{frozen=!frozen},{dialog=true})
+ 0->Home(hidden,{hidden=!hidden},frozen,toggleFrozen,{page=1})
+ 1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
  2->ActivityPage()
  else->Profile({dialog=true})
  }
  }
- if(dialog) AlertDialog(onDismissRequest={dialog=false},containerColor=Panel,title={Text("NOVA PAY",color=Gold)},text={Text("Cette fonction sera reliée à un service sécurisé dans une prochaine étape. Aucune opération bancaire réelle n'est effectuée dans cette version.",color=Silver)},confirmButton={TextButton(onClick={dialog=false}){Text("Fermer",color=Gold)}})
+ if(dialog) AlertDialog(onDismissRequest={dialog=false},containerColor=Panel,title={Text("NOVA PAY",color=Gold)},text={Text("Cette rubrique est une maquette. Elle sera complétée dans une prochaine version. Aucune opération bancaire réelle n'est effectuée.",color=Silver)},confirmButton={TextButton(onClick={dialog=false}){Text("Fermer",color=Gold)}})
  }}
 }
 
@@ -81,7 +96,7 @@ class MainActivity:ComponentActivity(){
  item{CardVisual(frozen)}
  item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
  Action(Icons.Rounded.CreditCard,"Mes cartes",toCards,Modifier.weight(1f))
- Action(Icons.Rounded.Lock,if(frozen)"Débloquer" else "Verrouiller",freeze,Modifier.weight(1f))
+ Action(if(frozen)Icons.Rounded.LockOpen else Icons.Rounded.Lock,if(frozen)"Activer" else "Geler",freeze,Modifier.weight(1f))
  Action(Icons.Rounded.ReceiptLong,"Activité",{},Modifier.weight(1f))
  }}
  item{Text("Activité récente",fontSize=17.sp,fontWeight=FontWeight.Bold,color=Silver)}
@@ -95,27 +110,54 @@ class MainActivity:ComponentActivity(){
 @Composable fun CardVisual(frozen:Boolean){
  Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(Color(0xFF28334A),Color(0xFF101827),Color(0xFF332A50)))).border(1.dp,Gold.copy(.55f),RoundedCornerShape(24.dp)).padding(20.dp)){
  Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.SpaceBetween){
- Row(verticalAlignment=Alignment.CenterVertically){Text("NOVA",color=Gold,fontSize=18.sp,fontWeight=FontWeight.Black,letterSpacing=3.sp);Spacer(Modifier.weight(1f));Text("VIRTUAL",color=Silver,fontSize=9.sp,letterSpacing=2.sp)}
- Column(verticalArrangement=Arrangement.spacedBy(7.dp)){Text("••••  ••••  ••••  2048",color=Silver,fontSize=18.sp,letterSpacing=2.sp);Row{Text("TEST CARD",color=Muted,fontSize=9.sp);Spacer(Modifier.weight(1f));Text("DEMO",color=Gold,fontWeight=FontWeight.Bold,fontSize=10.sp)}}
+ Row(verticalAlignment=Alignment.CenterVertically){Text("NOVA",color=Gold,fontSize=18.sp,fontWeight=FontWeight.Black,letterSpacing=3.sp);Spacer(Modifier.weight(1f));Text("VIRTUAL • DEMO",color=Silver,fontSize=9.sp,letterSpacing=1.sp)}
+ Column(verticalArrangement=Arrangement.spacedBy(7.dp)){Text("••••  ••••  ••••  2048",color=Silver,fontSize=18.sp,letterSpacing=2.sp);Row{Text("CARTE DE TEST",color=Muted,fontSize=9.sp);Spacer(Modifier.weight(1f));Text("NON VALIDE",color=Gold,fontWeight=FontWeight.Bold,fontSize=9.sp)}}
  Row(verticalAlignment=Alignment.CenterVertically){Text("NOVA MEMBER",color=Silver,fontSize=10.sp);Spacer(Modifier.weight(1f));Text("N",color=Gold,fontSize=27.sp,fontWeight=FontWeight.Black)}
  }
- if(frozen) Box(Modifier.fillMaxSize().background(Ink.copy(.75f)),contentAlignment=Alignment.Center){Text("🔒  CARTE VERROUILLÉE",color=Gold,fontWeight=FontWeight.Bold)}
+ if(frozen) Box(Modifier.fillMaxSize().background(Ink.copy(.78f)),contentAlignment=Alignment.Center){Text("CARTE GELÉE • DÉMO",color=Gold,fontWeight=FontWeight.Bold)}
  }
 }
 
-@Composable fun Cards(frozen:Boolean,toggle:()->Unit,add:()->Unit){
- Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
- Heading("Mes cartes","Gérez vos moyens de paiement")
+@Composable fun Cards(frozen:Boolean,toggle:()->Unit,limit:Int,onLimitChange:(Int)->Unit){
+ Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp,bottom=22.dp),verticalArrangement=Arrangement.spacedBy(17.dp)){
+ Heading("Mes cartes","Gérez votre carte de démonstration")
  CardVisual(frozen)
- Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Carte virtuelle de démonstration",color=Silver,fontWeight=FontWeight.SemiBold);Text("Aucune donnée bancaire réelle",color=Muted,fontSize=11.sp)};Switch(frozen,{toggle()},colors=SwitchDefaults.colors(checkedThumbColor=Gold,checkedTrackColor=Gold.copy(.3f)))}
- Button(onClick=add,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Ink)){Icon(Icons.Rounded.Add,null);Spacer(Modifier.width(8.dp));Text("Ajouter une carte")}
+ Row(verticalAlignment=Alignment.CenterVertically){
+ Column(Modifier.weight(1f)){Text("État de la carte",color=Silver,fontWeight=FontWeight.SemiBold);Text(if(frozen)"Gelée • Les actions de démo sont suspendues" else "Active • Mode démonstration",color=if(frozen)Gold else Green,fontSize=11.sp)}
+ Switch(checked=!frozen,onCheckedChange={toggle()},colors=SwitchDefaults.colors(checkedThumbColor=Gold,checkedTrackColor=Gold.copy(.3f),uncheckedThumbColor=Muted))
+ }
+ Button(onClick=toggle,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=if(frozen)Green else Color(0xFF29364D),contentColor=if(frozen)Ink else Silver)){
+ Icon(if(frozen)Icons.Rounded.LockOpen else Icons.Rounded.Lock,null);Spacer(Modifier.width(8.dp));Text(if(frozen)"Activer la carte de démo" else "Geler la carte de démo")
+ }
+ Divider(color=Panel)
+ Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+ Text("Plafond de dépenses simulé",color=Silver,fontWeight=FontWeight.SemiBold)
+ Text("%,d FCFA".format(java.util.Locale.FRANCE,limit),fontSize=25.sp,fontWeight=FontWeight.Bold,color=Gold)
+ Slider(value=limit.toFloat(),onValueChange={onLimitChange(it.toInt())},valueRange=10000f..500000f,steps=48,colors=SliderDefaults.colors(thumbColor=Gold,activeTrackColor=Gold,inactiveTrackColor=Blue))
+ Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("10 000",color=Muted,fontSize=10.sp);Text("500 000 FCFA",color=Muted,fontSize=10.sp)}
+ Text("Ce plafond est uniquement local et ne bloque aucun paiement réel.",color=Muted,fontSize=10.sp)
+ }
+ Divider(color=Panel)
+ Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+ Text("Informations de démonstration",color=Silver,fontWeight=FontWeight.SemiBold)
+ InfoLine("Numéro affiché","•••• •••• •••• 2048")
+ InfoLine("Titulaire","NOVA MEMBER")
+ InfoLine("Réseau","Aucun réseau de paiement")
+ InfoLine("Sécurité","Aucun CVV ni code bancaire")
+ }
  Notice()
+ }
+}
+
+@Composable fun InfoLine(label:String,value:String){
+ Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Panel).padding(13.dp),verticalAlignment=Alignment.CenterVertically){
+ Text(label,color=Muted,fontSize=11.sp,modifier=Modifier.weight(1f));Text(value,color=Silver,fontSize=11.sp,fontWeight=FontWeight.SemiBold)
  }
 }
 
 @Composable fun ActivityPage(){
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=24.dp)){
- Heading("Activité","Vos mouvements en un coup d'œil")
+ Heading("Activité","Vos mouvements fictifs en un coup d'œil")
  Spacer(Modifier.height(16.dp))
  Tx("Abonnement numérique","03 nov. 2026 • Démonstration","− 4 900 FCFA",Icons.Rounded.Subscriptions,false)
  Tx("Achat en ligne","02 nov. 2026 • Démonstration","− 12 500 FCFA",Icons.Rounded.ShoppingBag,false)
@@ -146,7 +188,7 @@ class MainActivity:ComponentActivity(){
 }
 @Composable fun Notice(){
  Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(Panel).padding(15.dp)){
- Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Rounded.Shield,null,tint=Gold);Spacer(Modifier.width(8.dp));Text("Version 1.0 • Démonstration",color=Gold,fontWeight=FontWeight.Bold,fontSize=12.sp)}
- Spacer(Modifier.height(6.dp));Text("Les montants, cartes et opérations affichés sont fictifs. NOVA PAY ne détient pas de fonds, n'émet pas de carte bancaire et n'effectue aucun paiement réel dans cette version.",color=Muted,fontSize=11.sp,lineHeight=16.sp)
+ Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Rounded.Shield,null,tint=Gold);Spacer(Modifier.width(8.dp));Text("Version 1.1 • Démonstration",color=Gold,fontWeight=FontWeight.Bold,fontSize=12.sp)}
+ Spacer(Modifier.height(6.dp));Text("Cette carte est fictive : elle ne possède aucun numéro bancaire valide, aucun CVV et aucun réseau de paiement. Le solde, le plafond et les opérations sont simulés et stockés uniquement sur cet appareil. Aucun paiement réel n'est possible.",color=Muted,fontSize=11.sp,lineHeight=16.sp)
  }
 }
