@@ -1,23 +1,43 @@
 # NOVA PAY Android
 
-Application Android Kotlin + Jetpack Compose. Identité visuelle : noir profond, bleu électrique et argent. Le logo institutionnel or/argent/bleu est conservé pour les supports de présentation ; l'icône Android utilise la signature bleu/argent.
+Application Android Kotlin + Jetpack Compose. Identité visuelle : noir profond, bleu électrique et argent.
 
 ## État actuel
 
-La version 1.0 est un prototype visuel avec tableau de bord, solde fictif, carte virtuelle de démonstration, verrouillage visuel local, activité, profil et navigation.
+Prototype Android de démonstration : inscription/connexion locales, profil modifiable, solde fictif, carte de test non valide, opérations simulées et historique local.
+
+## Fondation backend Supabase
+
+Le dossier `supabase/` contient le premier schéma SQL pour préparer une application connectée :
+
+- `profiles` : profil lié à l'identifiant Auth Supabase.
+- `demo_transactions` : historique de transactions strictement simulées.
+- Row Level Security (RLS) activée sur les deux tables.
+- Chaque utilisateur ne peut lire/modifier que son propre profil et consulter/créer ses propres opérations de démonstration.
+- Les opérations de démonstration sont immuables depuis le client (aucune règle UPDATE/DELETE).
+
+### Mise en place
+
+1. Créer un projet Supabase.
+2. Ouvrir **SQL Editor** dans le tableau de bord.
+3. Copier puis exécuter le contenu de `supabase/schema.sql`.
+4. Récupérer l'URL du projet et la clé **publishable** depuis le panneau Connect. Ne jamais utiliser ni intégrer une clé `service_role` dans l'application Android.
+5. Communiquer uniquement l'URL du projet et la clé publishable si nécessaire pour configurer l'application. Ne jamais partager de mot de passe, code de connexion ou secret d'administration.
+
+Le schéma SQL est une fondation ; l'application Android utilise encore son authentification et son stockage locaux. La connexion réelle à Supabase sera faite dans une étape distincte, puis testée avec deux comptes et deux appareils.
 
 ## Feuille de route
 
-1. **Comptes utilisateurs et authentification** — commencer par un parcours de démonstration local, puis concevoir une authentification serveur adaptée.
-2. **Portefeuille avec données persistantes** — enregistrer les préférences et données de démonstration localement, avec une séparation claire entre données fictives et données financières.
-3. **Transactions de démonstration** — historique, statuts et reçus simulés, sans transfert réel d'argent.
-4. **Architecture sécurisée pour les futurs paiements** — définir les frontières client/serveur, la gestion des secrets, les journaux et les contrôles de sécurité avant toute intégration financière.
-5. **Partenariats avec des prestataires de paiement** — étudier les prestataires autorisés, leur couverture géographique, leurs exigences contractuelles et réglementaires.
+1. **Backend** — schéma PostgreSQL et isolation des données avec RLS (fondation ajoutée).
+2. **Authentification distante** — inscription, connexion, déconnexion et session Supabase.
+3. **Profil synchronisé** — mêmes informations sur plusieurs appareils.
+4. **Historique synchronisé** — transactions fictives avec statuts et horodatages.
+5. **Tests de sécurité** — vérifier qu'un compte ne peut jamais lire les données d'un autre.
 
 ## Limites et sécurité
 
-Cette version ne crée pas de compte financier réel, ne conserve pas de fonds, n'émet pas de carte Visa/Mastercard et n'effectue aucun paiement. Les opérations financières réelles nécessiteront des prestataires agréés, les autorisations applicables et une infrastructure serveur auditée. Ne pas saisir de vraies coordonnées bancaires ni de secrets dans le prototype.
+NOVA PAY est un prototype éducatif. Il ne détient pas de fonds, n'émet pas de carte Visa/Mastercard et n'effectue aucun paiement réel. Les soldes et transactions sont fictifs. Une intégration financière réelle exigerait notamment des prestataires autorisés, les validations réglementaires applicables, une architecture serveur dédiée et des audits de sécurité. Ne pas saisir de vraies coordonnées bancaires ni de secrets dans le prototype.
 
 ## Compilation
 
-Ouvrir le projet dans Android Studio avec JDK 17 et Android SDK 35, puis lancer `assembleDebug`. Le workflow GitHub Actions compile automatiquement l'APK de débogage.
+Projet Android Kotlin avec JDK 17 et Android SDK 35. Le workflow GitHub Actions compile l'APK de débogage.
