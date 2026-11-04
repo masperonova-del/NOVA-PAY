@@ -237,7 +237,9 @@ fun AuthScreen(
                         onValueChange = { password = it },
                         label = "Mot de passe",
                         keyboardType = KeyboardType.Password,
-                        isPassword = true
+                        isPassword = true,
+                        passwordVisible = passwordVisible,
+                        onTogglePasswordVisibility = { passwordVisible = !passwordVisible }
                     )
 
                     Spacer(modifier = Modifier.height(18.dp))
