@@ -13,6 +13,8 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.launch
+import io.github.jan.supabase.auth.signOut
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
@@ -43,7 +45,8 @@ class MainActivity:ComponentActivity(){
  val context=LocalContext.current
  val prefs=remember{context.getSharedPreferences(PREFS_NAME,android.content.Context.MODE_PRIVATE)}
  val authStorage=remember{AuthStorage(context)}
- var currentUser by remember{mutableStateOf(authStorage.getCurrentUser())}
+ var currentUser by remember{mutableStateOf(NovaSupabase.currentUser())}
+ val scope = rememberCoroutineScope()
  var page by rememberSaveable{mutableIntStateOf(0)}
  var hidden by rememberSaveable{mutableStateOf(false)}
  var frozen by remember{mutableStateOf(prefs.getBoolean(KEY_FROZEN,false))}
@@ -82,9 +85,9 @@ class MainActivity:ComponentActivity(){
       1->Cards(frozen,toggleFrozen,spendingLimit,updateLimit)
       2->ActivityPage(history)
       else->Profile(user=user,open={dialog=true},onProfileUpdated={updated->authStorage.updateProfile(updated.name,updated.email,updated.phone)?.let{currentUser=it}},onLogout={
-       authStorage.logout()
-       currentUser=null
-       page=0
+       scope.launch {
+       try { NovaSupabase.client.auth.signOut() } finally { currentUser=null; page=0 }
+      }
       })
      }
     }
