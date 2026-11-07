@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.novapay.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.novapay.app"
