@@ -191,7 +191,7 @@ fun AuthScreen(
                                 loading = true
                                 scope.launch {
                                     try {
-                                        NovaSupabase.client.auth.signUpWith(Email) {
+                                        NovaSupabase.client.auth.signUpWith(Email, redirectUrl = NovaSupabase.AUTH_REDIRECT_URL) {
                                             this.email = email.trim()
                                             this.password = password
                                             data = buildJsonObject {
