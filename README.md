@@ -26,6 +26,20 @@ Le dossier `supabase/` contient le premier schéma SQL pour préparer une applic
 
 Le schéma SQL est une fondation ; l'application Android utilise encore son authentification et son stockage locaux. La connexion réelle à Supabase sera faite dans une étape distincte, puis testée avec deux comptes et deux appareils.
 
+## Registre de portefeuille de démonstration — étape 1
+
+Le schéma initial est dans `supabase/schema.sql`. Après l'avoir appliqué, exécuter ensuite la migration `supabase/migrations/202611070001_demo_ledger_hardening.sql` dans Supabase SQL Editor.
+
+Cette migration :
+
+- retire au client le droit d'écrire directement dans le registre ;
+- impose la création d'opérations via une fonction serveur authentifiée ;
+- vérifie les montants positifs, les libellés et le solde avant un débit simulé ;
+- utilise une clé d'idempotence pour éviter de comptabiliser deux fois une requête répétée ;
+- expose un solde de démonstration calculé depuis l'historique, plutôt qu'un solde modifiable indépendamment.
+
+**Important :** ce registre reste entièrement fictif. Il ne représente pas de fonds déposés et ne permet aucun paiement. L'application Android n'est pas encore connectée à ces nouvelles fonctions ; l'intégration client et les tests multi-comptes constituent l'étape suivante.
+
 ## Feuille de route
 
 1. **Backend** — schéma PostgreSQL et isolation des données avec RLS (fondation ajoutée).
