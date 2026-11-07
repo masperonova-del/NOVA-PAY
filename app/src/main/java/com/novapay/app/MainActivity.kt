@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.handleDeeplinks
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
@@ -36,9 +37,16 @@ private const val KEY_HISTORY="demo_history"
 
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState)
+ NovaSupabase.client.handleDeeplinks(intent)
  window.statusBarColor=android.graphics.Color.rgb(8,11,18)
  window.navigationBarColor=android.graphics.Color.rgb(8,11,18)
  setContent { NovaApp() }}
+
+ override fun onNewIntent(intent:android.content.Intent){
+  super.onNewIntent(intent)
+  setIntent(intent)
+  NovaSupabase.client.handleDeeplinks(intent)
+ }
 }
 
 @Composable fun NovaApp(){
