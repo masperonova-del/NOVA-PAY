@@ -13,6 +13,8 @@ import io.github.jan.supabase.auth.auth
  * Never place a Supabase secret/service_role key in this Android app.
  */
 object NovaSupabase {
+    const val AUTH_REDIRECT_URL = "novapay://auth/callback"
+
     fun currentUser(): AuthUser? {
         val user = client.auth.currentSessionOrNull()?.user ?: return null
         val metadata = user.userMetadata
@@ -28,7 +30,10 @@ object NovaSupabase {
         supabaseUrl = BuildConfig.SUPABASE_URL,
         supabaseKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
     ) {
-        install(Auth)
+        install(Auth) {
+            host = "auth"
+            scheme = "novapay"
+        }
         install(Postgrest)
     }
 }
