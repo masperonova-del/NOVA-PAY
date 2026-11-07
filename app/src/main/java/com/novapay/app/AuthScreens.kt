@@ -11,6 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import io.github.jan.supabase.auth.providers.Email
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +43,8 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     BackHandler(enabled = mode != 0) {
         message = ""
@@ -178,31 +184,33 @@ fun AuthScreen(
                     AuthButton(
                         text = "Créer mon compte",
                         onClick = {
-                            val result = authStorage.register(
-                                name.trim(),
-                                email.trim(),
-                                phone.trim(),
-                                password
-                            )
-
-                            when (result) {
-                                AuthStorageResult.SUCCESS -> {
-                                    val user = authStorage.getCurrentUser()
-                                    if (user != null) {
-                                        onAuthenticated(user)
-                                    } else {
-                                        message = "Impossible de charger le compte."
+                            if (name.isBlank() || !email.contains("@") || phone.isBlank() || password.length < 10) {
+                                message = "Vérifie les informations. Le mot de passe doit contenir au moins 10 caractères."
+                            } else {
+                                loading = true
+                                scope.launch {
+                                    try {
+                                        NovaSupabase.client.auth.signUpWith(Email) {
+                                            this.email = email.trim()
+                                            this.password = password
+                                            data = buildJsonObject {
+                                                put("display_name", name.trim())
+                                                put("phone", phone.trim())
+                                            }
+                                        }
+                                        val user = NovaSupabase.currentUser()
+                                        if (user != null) {
+                                            onAuthenticated(user)
+                                        } else {
+                                            message = "Compte créé. Vérifie ta boîte e-mail pour confirmer ton adresse, puis connecte-toi."
+                                            mode = 2
+                                        }
+                                    } catch (error: Exception) {
+                                        message = error.message?.take(180) ?: "Inscription impossible. Vérifie ta connexion et réessaie."
+                                    } finally {
+                                        loading = false
                                     }
                                 }
-
-                                AuthStorageResult.ACCOUNT_EXISTS ->
-                                    message = "Un compte existe déjà sur cet appareil."
-
-                                AuthStorageResult.INVALID_DATA ->
-                                    message = "Vérifie les informations et le mot de passe."
-
-                                AuthStorageResult.ERROR ->
-                                    message = "Une erreur est survenue. Réessaie."
                             }
                         }
                     )
@@ -256,20 +264,25 @@ fun AuthScreen(
                     AuthButton(
                         text = "Se connecter",
                         onClick = {
-                            val success = authStorage.login(
-                                email.trim(),
-                                password
-                            )
-
-                            if (success) {
-                                val user = authStorage.getCurrentUser()
-                                if (user != null) {
-                                    onAuthenticated(user)
-                                } else {
-                                    message = "Impossible de charger le compte."
-                                }
+                            if (!email.contains("@") || password.isBlank()) {
+                                message = "Saisis une adresse e-mail et un mot de passe valides."
                             } else {
-                                message = "E-mail ou mot de passe incorrect."
+                                loading = true
+                                scope.launch {
+                                    try {
+                                        NovaSupabase.client.auth.signInWith(Email) {
+                                            this.email = email.trim()
+                                            this.password = password
+                                        }
+                                        val user = NovaSupabase.currentUser()
+                                        if (user != null) onAuthenticated(user)
+                                        else message = "Connexion reçue, mais la session n'est pas encore disponible. Réessaie."
+                                    } catch (error: Exception) {
+                                        message = error.message?.take(180) ?: "E-mail ou mot de passe incorrect."
+                                    } finally {
+                                        loading = false
+                                    }
+                                }
                             }
                         }
                     )
